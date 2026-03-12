@@ -160,15 +160,78 @@ button:disabled {
     list-style: none;
 }
 
-.word-list li {
+.word-button {
+    width: 100%;
+    min-height: 0;
     padding: 16px 12px;
     border: 1px solid #cfe0ff;
     border-radius: 14px;
     background: var(--accent-soft);
+    color: var(--ink);
+    box-shadow: none;
     text-align: center;
     font-size: 1.1rem;
     font-weight: 700;
     text-transform: capitalize;
+}
+
+.word-button:hover,
+.word-button:focus-visible {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--accent);
+    background: #dce9ff;
+}
+
+.word-button.is-selected {
+    border-color: var(--accent-dark);
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+}
+
+.selected-word {
+    margin-top: 12px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: #f7f9fc;
+    border: 1px solid var(--card-border);
+    font-size: 1rem;
+    color: var(--muted);
+}
+
+.selected-word strong {
+    color: var(--ink);
+    font-size: 1.2rem;
+}
+
+.activity-list {
+    display: grid;
+    gap: 12px;
+    padding: 0;
+    margin: 16px 0 0;
+    list-style: none;
+}
+
+.activity-item {
+    padding: 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    background: #fdfefe;
+}
+
+.activity-type {
+    margin: 0 0 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+}
+
+.activity-text {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.5;
 }
 
 .hidden {
@@ -183,10 +246,5 @@ button:disabled {
     .controls {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         align-items: end;
-    }
-
-    #submitButton {
-        grid-column: 1 / -1;
-        max-width: none;
     }
 }

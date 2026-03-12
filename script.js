@@ -1,12 +1,20 @@
 const SHEET_CONFIG = {
     spreadsheetId: "1VphuHXyUE0AF8AgCOJcsUOrXu-1Rl8xYkh-0T8ruRgs",
-    soundSheetName: "Sheet1",
-    categorySheetName: "Sheet2",
+    wordSheetName: "Word_Metadata",
+    activitySheetName: "Activity_Template",
 };
 
 const state = {
-    soundMap: new Map(),
-    categoryMap: new Map(),
+    words: [],
+    activities: [],
+    filteredWords: [],
+    selectedWord: null,
+};
+
+const DIFFICULTY_ORDER = {
+    easy: 0,
+    medium: 1,
+    hard: 2,
 };
 
 const soundDropdown = document.getElementById("soundDropdown");
@@ -15,6 +23,10 @@ const wordForm = document.getElementById("wordForm");
 const statusMessage = document.getElementById("statusMessage");
 const emptyState = document.getElementById("emptyState");
 const wordList = document.getElementById("wordList");
+const activityStatus = document.getElementById("activityStatus");
+const activityEmptyState = document.getElementById("activityEmptyState");
+const selectedWordCard = document.getElementById("selectedWordCard");
+const activityList = document.getElementById("activityList");
 
 function setStatus(message) {
     statusMessage.textContent = message;
@@ -63,59 +75,169 @@ async function fetchSheet(sheetName) {
     return extractTable(text);
 }
 
-function tableToMatrix(table) {
-    return table.rows.map((row) => row.c.map((cell) => String(cell?.v ?? "").trim()));
-}
-
-function matrixToColumnMap(matrix) {
-    if (!matrix.length) {
-        return new Map();
-    }
-
-    const headers = matrix[0];
-    const valuesByHeader = new Map();
-
-    headers.forEach((header, columnIndex) => {
-        const cleanHeader = String(header || "").trim();
-        if (!cleanHeader) {
-            return;
-        }
-
-        const values = matrix
-            .slice(1)
-            .map((row) => String(row[columnIndex] || "").trim())
-            .filter(Boolean);
-
-        valuesByHeader.set(cleanHeader, [...new Set(values)]);
+function tableToObjects(table) {
+    const headers = table.cols.map((column) => column.label);
+    return table.rows.map((row) => {
+        const values = row.c || [];
+        return headers.reduce((record, header, index) => {
+            record[header] = values[index]?.v ?? null;
+            return record;
+        }, {});
     });
-
-    return valuesByHeader;
 }
 
-function sortedKeys(map) {
-    return [...map.keys()].sort((a, b) => a.localeCompare(b));
+function formatValue(value) {
+    return String(value ?? "").trim();
+}
+
+function isTruthy(value) {
+    return value === true || String(value ?? "").trim().toLowerCase() === "true";
+}
+
+function uniqueValues(rows, key) {
+    return [...new Set(rows.map((row) => formatValue(row[key])).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b),
+    );
+}
+
+function normalizeWordRecord(row) {
+    return {
+        word: formatValue(row.Word),
+        sound: formatValue(row.Sound),
+        category: formatValue(row.Category),
+        position: formatValue(row.Position) || "Any",
+        imageUrl: formatValue(row.ImageUrl),
+        active: isTruthy(row.Active),
+    };
+}
+
+function normalizeActivityRecord(row) {
+    return {
+        id: formatValue(row.TemplateID),
+        activityType: formatValue(row.ActivityType) || "Activity",
+        category: formatValue(row.Category) || "Any",
+        position: formatValue(row.Position) || "Any",
+        difficulty: formatValue(row.Difficulty),
+        template: formatValue(row.Template),
+        notes: formatValue(row.Notes),
+        active: isTruthy(row.Active),
+    };
+}
+
+function getDifficultyRank(difficulty) {
+    const normalizedDifficulty = formatValue(difficulty).toLowerCase();
+    return DIFFICULTY_ORDER[normalizedDifficulty] ?? Number.MAX_SAFE_INTEGER;
+}
+
+function setActivityStatus(message) {
+    activityStatus.textContent = message;
+}
+
+function clearActivities(message = "Pick a word from the list above to generate a few guided activities.") {
+    state.selectedWord = null;
+    selectedWordCard.classList.add("hidden");
+    selectedWordCard.innerHTML = "";
+    activityList.classList.add("hidden");
+    activityList.innerHTML = "";
+    activityEmptyState.textContent = message;
+    activityEmptyState.classList.remove("hidden");
+    setActivityStatus("Choose a word to see practice ideas.");
 }
 
 function renderWords(words, sound, category) {
     wordList.innerHTML = "";
+    state.selectedWord = null;
 
     if (!words.length) {
         emptyState.textContent = `No words found for ${sound} in ${category}.`;
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
         setStatus("0 words found");
+        clearActivities("Pick a different sound or category to find words for practice.");
         return;
     }
 
-    words.forEach((word) => {
+    words.forEach((wordRecord) => {
         const listItem = document.createElement("li");
-        listItem.textContent = word;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "word-button";
+        button.textContent = wordRecord.word;
+        button.addEventListener("click", () => selectWord(wordRecord));
+
+        listItem.appendChild(button);
         wordList.appendChild(listItem);
     });
 
     emptyState.classList.add("hidden");
     wordList.classList.remove("hidden");
     setStatus(`${words.length} word${words.length === 1 ? "" : "s"} found`);
+    clearActivities();
+}
+
+function buildActivityText(template, wordRecord) {
+    return template
+        .replaceAll("{word}", wordRecord.word)
+        .replaceAll("{sound}", wordRecord.sound)
+        .replaceAll("{category}", wordRecord.category)
+        .replaceAll("{position}", wordRecord.position);
+}
+
+function renderActivities(wordRecord, activities) {
+    selectedWordCard.innerHTML = `
+        <strong>${wordRecord.word}</strong><br>
+        Sound: ${wordRecord.sound} | Category: ${wordRecord.category} | Position: ${wordRecord.position}
+    `;
+    selectedWordCard.classList.remove("hidden");
+
+    activityList.innerHTML = "";
+
+    if (!activities.length) {
+        activityEmptyState.textContent = `No active practice ideas matched ${wordRecord.word} yet.`;
+        activityEmptyState.classList.remove("hidden");
+        activityList.classList.add("hidden");
+        setActivityStatus("0 activities found");
+        return;
+    }
+
+    activities.forEach((activity) => {
+        const listItem = document.createElement("li");
+        listItem.className = "activity-item";
+        listItem.innerHTML = `
+            <p class="activity-type">${activity.activityType}${activity.difficulty ? ` | ${activity.difficulty}` : ""}</p>
+            <p class="activity-text">${buildActivityText(activity.template, wordRecord)}</p>
+        `;
+        activityList.appendChild(listItem);
+    });
+
+    activityEmptyState.classList.add("hidden");
+    activityList.classList.remove("hidden");
+    setActivityStatus(`${activities.length} practice idea${activities.length === 1 ? "" : "s"} found`);
+}
+
+function filterActivities(wordRecord) {
+    return state.activities
+        .filter((activity) => activity.active)
+        .filter((activity) => activity.category === "Any" || activity.category === wordRecord.category)
+        .filter((activity) => activity.position === "Any" || activity.position === wordRecord.position)
+        .sort((a, b) => {
+            const difficultyRankDifference = getDifficultyRank(a.difficulty) - getDifficultyRank(b.difficulty);
+            if (difficultyRankDifference !== 0) {
+                return difficultyRankDifference;
+            }
+
+            return a.activityType.localeCompare(b.activityType);
+        });
+}
+
+function selectWord(wordRecord) {
+    state.selectedWord = wordRecord;
+    document.querySelectorAll(".word-button").forEach((button) => {
+        button.classList.toggle("is-selected", button.textContent === wordRecord.word);
+    });
+
+    const activities = filterActivities(wordRecord);
+    renderActivities(wordRecord, activities);
 }
 
 function updateResults() {
@@ -127,47 +249,54 @@ function updateResults() {
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
         setStatus("Waiting for filters");
+        clearActivities();
         return;
     }
 
     setStatus("Filtering words...");
 
     try {
-        const soundWords = state.soundMap.get(sound) || [];
-        const categoryWords = state.categoryMap.get(category) || [];
-        const categoryWordSet = new Set(categoryWords.map((word) => word.toLowerCase()));
-        const matches = soundWords
-            .filter((word) => categoryWordSet.has(word.toLowerCase()))
-            .sort((a, b) => a.localeCompare(b));
+        const matches = state.words
+            .filter((row) => row.active)
+            .filter((row) => row.sound === sound && row.category === category)
+            .sort((a, b) => a.word.localeCompare(b.word));
 
+        state.filteredWords = matches;
         renderWords(matches, sound, category);
     } catch (error) {
         console.error(error);
-        emptyState.textContent = "Unable to load words from Google Sheets.";
+        emptyState.textContent = "Unable to load practice words.";
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
         setStatus(error.message);
+        clearActivities("Unable to load practice ideas.");
     }
 }
 
 async function initialize() {
     try {
-        const [soundTable, categoryTable] = await Promise.all([
-            fetchSheet(SHEET_CONFIG.soundSheetName),
-            fetchSheet(SHEET_CONFIG.categorySheetName),
+        const [wordTable, activityTable] = await Promise.all([
+            fetchSheet(SHEET_CONFIG.wordSheetName),
+            fetchSheet(SHEET_CONFIG.activitySheetName),
         ]);
 
-        state.soundMap = matrixToColumnMap(tableToMatrix(soundTable));
-        state.categoryMap = matrixToColumnMap(tableToMatrix(categoryTable));
+        state.words = tableToObjects(wordTable)
+            .map(normalizeWordRecord)
+            .filter((row) => row.word && row.sound && row.category);
+        state.activities = tableToObjects(activityTable)
+            .map(normalizeActivityRecord)
+            .filter((row) => row.template);
 
-        setDropdownOptions(soundDropdown, sortedKeys(state.soundMap), "a sound");
-        setDropdownOptions(positionDropdown, sortedKeys(state.categoryMap), "a category");
+        setDropdownOptions(soundDropdown, uniqueValues(state.words.filter((row) => row.active), "sound"), "a sound");
+        setDropdownOptions(positionDropdown, uniqueValues(state.words.filter((row) => row.active), "category"), "a category");
         setStatus("Choose a sound and category");
+        clearActivities();
     } catch (error) {
         console.error(error);
         setStatus(error.message);
         setDropdownOptions(soundDropdown, [], "a sound");
         setDropdownOptions(positionDropdown, [], "a category");
+        clearActivities("Unable to load practice ideas.");
     }
 }
 
