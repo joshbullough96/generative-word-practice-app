@@ -141,6 +141,20 @@ function uniqueValues(rows, key) {
         .sort((a, b) => a.localeCompare(b));
 }
 
+function uniqueWordRecords(rows) {
+    const seenWords = new Set();
+
+    return rows.filter((row) => {
+        const normalizedWord = row.word.toLowerCase();
+        if (seenWords.has(normalizedWord)) {
+            return false;
+        }
+
+        seenWords.add(normalizedWord);
+        return true;
+    });
+}
+
 function normalizeWordRecord(row) {
     return {
         word: formatValue(row.Word),
@@ -273,7 +287,7 @@ function renderWords(words, sound, category, position) {
 
 function buildActivityText(template, wordRecord) {
     return template
-        .replaceAll("{word}", wordRecord.word)
+        .replaceAll("{word}", `<strong>${wordRecord.word}</strong>`)
         .replaceAll("{sound}", wordRecord.sound)
         .replaceAll("{category}", wordRecord.category)
         .replaceAll("{position}", wordRecord.position);
@@ -312,7 +326,7 @@ function renderActivities(wordRecord, activities) {
 }
 
 function filterActivities(wordRecord) {
-    return state.activities
+    const matchingActivities = state.activities
         .filter((activity) => activity.active)
         .filter((activity) => activity.category === "Any" || activity.category === wordRecord.category)
         .filter((activity) => activity.position === "Any" || activity.position === wordRecord.position)
@@ -324,6 +338,16 @@ function filterActivities(wordRecord) {
 
             return a.activityType.localeCompare(b.activityType);
         });
+
+    const seenActivityTypes = new Set();
+    return matchingActivities.filter((activity) => {
+        if (seenActivityTypes.has(activity.activityType)) {
+            return false;
+        }
+
+        seenActivityTypes.add(activity.activityType);
+        return true;
+    });
 }
 
 function selectWord(wordRecord) {
@@ -379,8 +403,10 @@ function updateResults() {
             .filter((row) => syllableCounts.includes(row.syllableCount))
             .sort((a, b) => a.word.localeCompare(b.word));
 
-        state.filteredWords = matches;
-        renderWords(matches, sound, category, positions.join(", "));
+        const uniqueMatches = uniqueWordRecords(matches);
+
+        state.filteredWords = uniqueMatches;
+        renderWords(uniqueMatches, sound, category, positions.join(", "));
     } catch (error) {
         console.error(error);
         emptyState.textContent = "Unable to load practice words.";
