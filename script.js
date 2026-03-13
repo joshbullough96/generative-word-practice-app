@@ -41,6 +41,11 @@ function setDropdownOptions(select, values, label) {
     placeholder.textContent = `Select ${label}`;
     select.appendChild(placeholder);
 
+    const anyOption = document.createElement("option");
+    anyOption.value = "Any";
+    anyOption.textContent = "Any";
+    select.appendChild(anyOption);
+
     values.forEach((value) => {
         const option = document.createElement("option");
         option.value = value;
@@ -96,9 +101,8 @@ function isTruthy(value) {
 }
 
 function uniqueValues(rows, key) {
-    return [...new Set(rows.map((row) => formatValue(row[key])).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b),
-    );
+    return [...new Set(rows.map((row) => formatValue(row[key])).filter((value) => value && value !== "Any"))]
+        .sort((a, b) => a.localeCompare(b));
 }
 
 function normalizeWordRecord(row) {
@@ -255,12 +259,23 @@ function updateResults() {
         return;
     }
 
+    if (sound === "Any" && category === "Any" && position === "Any") {
+        emptyState.textContent = "Choose at least one specific filter before searching.";
+        emptyState.classList.remove("hidden");
+        wordList.classList.add("hidden");
+        setStatus("Waiting for filters");
+        clearActivities();
+        return;
+    }
+
     setStatus("Filtering words...");
 
     try {
         const matches = state.words
             .filter((row) => row.active)
-            .filter((row) => row.sound === sound && row.category === category && row.position === position)
+            .filter((row) => sound === "Any" || row.sound === sound)
+            .filter((row) => category === "Any" || row.category === category)
+            .filter((row) => position === "Any" || row.position === position)
             .sort((a, b) => a.word.localeCompare(b.word));
 
         state.filteredWords = matches;
