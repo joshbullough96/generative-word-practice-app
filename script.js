@@ -77,7 +77,7 @@ function setCheckboxGroupOptions(container, values, groupName) {
         input.type = "checkbox";
         input.name = groupName;
         input.value = value;
-        input.checked = true;
+        input.checked = false;
         input.dataset.filterGroup = groupName;
         input.id = `${groupName}-${index}`;
 
