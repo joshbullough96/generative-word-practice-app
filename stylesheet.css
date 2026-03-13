@@ -76,7 +76,7 @@ h1 {
 .controls {
     display: grid;
     gap: 14px;
-    margin: 18px 0 20px;
+    margin: 18px 0 14px;
 }
 
 .dropdown {
@@ -103,6 +103,99 @@ select {
     border: 1px solid #bfcbda;
     background: #fff;
     color: var(--ink);
+}
+
+.filter-groups {
+    display: grid;
+    gap: 14px;
+}
+
+.filter-group {
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    background: #f8fbff;
+}
+
+.filter-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.filter-group-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.filter-action {
+    width: auto;
+    min-height: 0;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #e8f1ff;
+    color: var(--accent-dark);
+    box-shadow: none;
+    font-size: 0.9rem;
+}
+
+.filter-action:hover,
+.filter-action:focus-visible {
+    transform: none;
+    box-shadow: none;
+    background: #dce9ff;
+}
+
+.option-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.option-loading {
+    margin: 0;
+    color: var(--muted);
+}
+
+.option-chip {
+    position: relative;
+}
+
+.option-chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.option-chip span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 1px solid #cfe0ff;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.option-chip input:checked + span {
+    border-color: var(--accent-dark);
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+}
+
+.option-chip input:focus-visible + span {
+    outline: 2px solid #9bc0ff;
+    outline-offset: 2px;
 }
 
 button {
@@ -244,7 +337,11 @@ button:disabled {
     }
 
     .controls {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         align-items: end;
+    }
+
+    .filter-groups {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

@@ -33,13 +33,38 @@
                             <option value="">Loading...</option>
                         </select>
                     </div>
+                </div>
 
-                    <div class="dropdown">
-                        <label for="positionDropdown">Position</label>
-                        <select id="positionDropdown" name="position" required>
-                            <option value="">Loading...</option>
-                        </select>
-                    </div>
+                <div class="filter-groups">
+                    <fieldset class="filter-group">
+                        <div class="filter-group-header">
+                            <p class="filter-group-title">Position</p>
+                            <button type="button" class="filter-action" data-filter-group="position">All</button>
+                        </div>
+                        <div id="positionOptions" class="option-grid">
+                            <p class="option-loading">Loading...</p>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="filter-group">
+                        <div class="filter-group-header">
+                            <p class="filter-group-title">Blend</p>
+                            <button type="button" class="filter-action" data-filter-group="blend">All</button>
+                        </div>
+                        <div id="blendOptions" class="option-grid">
+                            <p class="option-loading">Loading...</p>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="filter-group">
+                        <div class="filter-group-header">
+                            <p class="filter-group-title">Syllable Count</p>
+                            <button type="button" class="filter-action" data-filter-group="syllableCount">All</button>
+                        </div>
+                        <div id="syllableCountOptions" class="option-grid">
+                            <p class="option-loading">Loading...</p>
+                        </div>
+                    </fieldset>
                 </div>
 
                 <!-- <button id="submitButton" type="submit">Show Words</button> -->
@@ -53,7 +78,7 @@
             </div>
 
             <div id="emptyState" class="empty-state">
-                Select a sound, category, and position to see matching words.
+                Select your filters to see matching words.
             </div>
 
             <ul id="wordList" class="word-list hidden"></ul>

@@ -19,7 +19,9 @@ const DIFFICULTY_ORDER = {
 
 const soundDropdown = document.getElementById("soundDropdown");
 const categoryDropdown = document.getElementById("categoryDropdown");
-const positionDropdown = document.getElementById("positionDropdown");
+const positionOptions = document.getElementById("positionOptions");
+const blendOptions = document.getElementById("blendOptions");
+const syllableCountOptions = document.getElementById("syllableCountOptions");
 const wordForm = document.getElementById("wordForm");
 const statusMessage = document.getElementById("statusMessage");
 const emptyState = document.getElementById("emptyState");
@@ -33,7 +35,8 @@ function setStatus(message) {
     statusMessage.textContent = message;
 }
 
-function setDropdownOptions(select, values, label) {
+function setDropdownOptions(select, values, label, options = {}) {
+    const { includeAny = true, selectAll = false } = options;
     select.innerHTML = "";
 
     const placeholder = document.createElement("option");
@@ -41,16 +44,48 @@ function setDropdownOptions(select, values, label) {
     placeholder.textContent = `Select ${label}`;
     select.appendChild(placeholder);
 
-    const anyOption = document.createElement("option");
-    anyOption.value = "Any";
-    anyOption.textContent = "Any";
-    select.appendChild(anyOption);
+    if (includeAny) {
+        const anyOption = document.createElement("option");
+        anyOption.value = "Any";
+        anyOption.textContent = "Any";
+        select.appendChild(anyOption);
+    }
 
     values.forEach((value) => {
         const option = document.createElement("option");
         option.value = value;
         option.textContent = value;
+        option.selected = selectAll;
         select.appendChild(option);
+    });
+}
+
+function setCheckboxGroupOptions(container, values, groupName) {
+    container.innerHTML = "";
+
+    if (!values.length) {
+        container.innerHTML = '<p class="option-loading">No options available.</p>';
+        return;
+    }
+
+    values.forEach((value, index) => {
+        const label = document.createElement("label");
+        label.className = "option-chip";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = groupName;
+        input.value = value;
+        input.checked = true;
+        input.dataset.filterGroup = groupName;
+        input.id = `${groupName}-${index}`;
+
+        const text = document.createElement("span");
+        text.textContent = value;
+
+        label.appendChild(input);
+        label.appendChild(text);
+        container.appendChild(label);
     });
 }
 
@@ -111,6 +146,8 @@ function normalizeWordRecord(row) {
         sound: formatValue(row.Sound),
         category: formatValue(row.Category),
         position: formatValue(row.Position) || "Any",
+        blend: formatValue(row.Blend) || "None",
+        syllableCount: formatValue(row["Syllable Count"]) || "Unknown",
         imageUrl: formatValue(row.ImageUrl),
         active: isTruthy(row.Active),
     };
@@ -147,6 +184,21 @@ function clearActivities(message = "Pick a word from the list above to generate 
     activityEmptyState.textContent = message;
     activityEmptyState.classList.remove("hidden");
     setActivityStatus("Choose a word to see practice ideas.");
+}
+
+function getCheckedValues(container) {
+    return [...container.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+}
+
+function allOptionsSelected(container) {
+    const inputs = [...container.querySelectorAll('input[type="checkbox"]')];
+    return inputs.length > 0 && inputs.every((input) => input.checked);
+}
+
+function selectAllOptions(container) {
+    container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = true;
+    });
 }
 
 function renderWords(words, sound, category, position) {
@@ -191,7 +243,7 @@ function buildActivityText(template, wordRecord) {
 function renderActivities(wordRecord, activities) {
     selectedWordCard.innerHTML = `
         <strong>${wordRecord.word}</strong><br>
-        Sound: ${wordRecord.sound} | Category: ${wordRecord.category} | Position: ${wordRecord.position}
+        Sound: ${wordRecord.sound} | Category: ${wordRecord.category} | Position: ${wordRecord.position} | Blend: ${wordRecord.blend} | Syllables: ${wordRecord.syllableCount}
     `;
     selectedWordCard.classList.remove("hidden");
 
@@ -248,10 +300,12 @@ function selectWord(wordRecord) {
 function updateResults() {
     const sound = soundDropdown.value;
     const category = categoryDropdown.value;
-    const position = positionDropdown.value;
+    const positions = getCheckedValues(positionOptions);
+    const blends = getCheckedValues(blendOptions);
+    const syllableCounts = getCheckedValues(syllableCountOptions);
 
-    if (!sound || !category || !position) {
-        emptyState.textContent = "Choose all three filters before searching.";
+    if (!sound || !category || !positions.length || !blends.length || !syllableCounts.length) {
+        emptyState.textContent = "Choose all required filters before searching.";
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
         setStatus("Waiting for filters");
@@ -259,7 +313,13 @@ function updateResults() {
         return;
     }
 
-    if (sound === "Any" && category === "Any" && position === "Any") {
+    if (
+        sound === "Any" &&
+        category === "Any" &&
+        allOptionsSelected(positionOptions) &&
+        allOptionsSelected(blendOptions) &&
+        allOptionsSelected(syllableCountOptions)
+    ) {
         emptyState.textContent = "Choose at least one specific filter before searching.";
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
@@ -275,11 +335,13 @@ function updateResults() {
             .filter((row) => row.active)
             .filter((row) => sound === "Any" || row.sound === sound)
             .filter((row) => category === "Any" || row.category === category)
-            .filter((row) => position === "Any" || row.position === position)
+            .filter((row) => positions.includes(row.position))
+            .filter((row) => blends.includes(row.blend))
+            .filter((row) => syllableCounts.includes(row.syllableCount))
             .sort((a, b) => a.word.localeCompare(b.word));
 
         state.filteredWords = matches;
-        renderWords(matches, sound, category, position);
+        renderWords(matches, sound, category, positions.join(", "));
     } catch (error) {
         console.error(error);
         emptyState.textContent = "Unable to load practice words.";
@@ -304,17 +366,23 @@ async function initialize() {
             .map(normalizeActivityRecord)
             .filter((row) => row.template);
 
-        setDropdownOptions(soundDropdown, uniqueValues(state.words.filter((row) => row.active), "sound"), "a sound");
-        setDropdownOptions(categoryDropdown, uniqueValues(state.words.filter((row) => row.active), "category"), "a category");
-        setDropdownOptions(positionDropdown, uniqueValues(state.words.filter((row) => row.active), "position"), "a position");
-        setStatus("Choose a sound, category, and position");
+        const activeWords = state.words.filter((row) => row.active);
+
+        setDropdownOptions(soundDropdown, uniqueValues(activeWords, "sound"), "a sound");
+        setDropdownOptions(categoryDropdown, uniqueValues(activeWords, "category"), "a category");
+        setCheckboxGroupOptions(positionOptions, uniqueValues(activeWords, "position"), "position");
+        setCheckboxGroupOptions(blendOptions, uniqueValues(activeWords, "blend"), "blend");
+        setCheckboxGroupOptions(syllableCountOptions, uniqueValues(activeWords, "syllableCount"), "syllableCount");
+        setStatus("Choose your filters");
         clearActivities();
     } catch (error) {
         console.error(error);
         setStatus(error.message);
         setDropdownOptions(soundDropdown, [], "a sound");
         setDropdownOptions(categoryDropdown, [], "a category");
-        setDropdownOptions(positionDropdown, [], "a position");
+        setCheckboxGroupOptions(positionOptions, [], "position");
+        setCheckboxGroupOptions(blendOptions, [], "blend");
+        setCheckboxGroupOptions(syllableCountOptions, [], "syllableCount");
         clearActivities("Unable to load practice ideas.");
     }
 }
@@ -325,6 +393,21 @@ wordForm.addEventListener("submit", (event) => {
 
 soundDropdown.addEventListener("change", updateResults);
 categoryDropdown.addEventListener("change", updateResults);
-positionDropdown.addEventListener("change", updateResults);
+positionOptions.addEventListener("change", updateResults);
+blendOptions.addEventListener("change", updateResults);
+syllableCountOptions.addEventListener("change", updateResults);
+wordForm.querySelectorAll(".filter-action").forEach((button) => {
+    button.addEventListener("click", () => {
+        const group = button.dataset.filterGroup;
+        const containerMap = {
+            position: positionOptions,
+            blend: blendOptions,
+            syllableCount: syllableCountOptions,
+        };
+
+        selectAllOptions(containerMap[group]);
+        updateResults();
+    });
+});
 
 initialize();
