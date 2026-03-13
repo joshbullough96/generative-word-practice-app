@@ -18,6 +18,7 @@ const DIFFICULTY_ORDER = {
 };
 
 const soundDropdown = document.getElementById("soundDropdown");
+const categoryDropdown = document.getElementById("categoryDropdown");
 const positionDropdown = document.getElementById("positionDropdown");
 const wordForm = document.getElementById("wordForm");
 const statusMessage = document.getElementById("statusMessage");
@@ -144,12 +145,12 @@ function clearActivities(message = "Pick a word from the list above to generate 
     setActivityStatus("Choose a word to see practice ideas.");
 }
 
-function renderWords(words, sound, category) {
+function renderWords(words, sound, category, position) {
     wordList.innerHTML = "";
     state.selectedWord = null;
 
     if (!words.length) {
-        emptyState.textContent = `No words found for ${sound} in ${category}.`;
+        emptyState.textContent = `No words found for ${sound} in ${category} at ${position} position.`;
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
         setStatus("0 words found");
@@ -242,10 +243,11 @@ function selectWord(wordRecord) {
 
 function updateResults() {
     const sound = soundDropdown.value;
-    const category = positionDropdown.value;
+    const category = categoryDropdown.value;
+    const position = positionDropdown.value;
 
-    if (!sound || !category) {
-        emptyState.textContent = "Choose both filters before searching.";
+    if (!sound || !category || !position) {
+        emptyState.textContent = "Choose all three filters before searching.";
         emptyState.classList.remove("hidden");
         wordList.classList.add("hidden");
         setStatus("Waiting for filters");
@@ -258,11 +260,11 @@ function updateResults() {
     try {
         const matches = state.words
             .filter((row) => row.active)
-            .filter((row) => row.sound === sound && row.category === category)
+            .filter((row) => row.sound === sound && row.category === category && row.position === position)
             .sort((a, b) => a.word.localeCompare(b.word));
 
         state.filteredWords = matches;
-        renderWords(matches, sound, category);
+        renderWords(matches, sound, category, position);
     } catch (error) {
         console.error(error);
         emptyState.textContent = "Unable to load practice words.";
@@ -288,14 +290,16 @@ async function initialize() {
             .filter((row) => row.template);
 
         setDropdownOptions(soundDropdown, uniqueValues(state.words.filter((row) => row.active), "sound"), "a sound");
-        setDropdownOptions(positionDropdown, uniqueValues(state.words.filter((row) => row.active), "category"), "a category");
-        setStatus("Choose a sound and category");
+        setDropdownOptions(categoryDropdown, uniqueValues(state.words.filter((row) => row.active), "category"), "a category");
+        setDropdownOptions(positionDropdown, uniqueValues(state.words.filter((row) => row.active), "position"), "a position");
+        setStatus("Choose a sound, category, and position");
         clearActivities();
     } catch (error) {
         console.error(error);
         setStatus(error.message);
         setDropdownOptions(soundDropdown, [], "a sound");
-        setDropdownOptions(positionDropdown, [], "a category");
+        setDropdownOptions(categoryDropdown, [], "a category");
+        setDropdownOptions(positionDropdown, [], "a position");
         clearActivities("Unable to load practice ideas.");
     }
 }
@@ -305,6 +309,7 @@ wordForm.addEventListener("submit", (event) => {
 });
 
 soundDropdown.addEventListener("change", updateResults);
+categoryDropdown.addEventListener("change", updateResults);
 positionDropdown.addEventListener("change", updateResults);
 
 initialize();
