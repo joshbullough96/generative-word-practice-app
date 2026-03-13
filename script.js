@@ -161,7 +161,7 @@ function normalizeWordRecord(row) {
         sound: formatValue(row.Sound),
         category: formatValue(row.Category),
         position: formatValue(row.Position) || "Any",
-        blend: formatValue(row.Blend) || "None",
+        blend: formatValue(row.Blend) || "No blend",
         syllableCount: formatValue(row["Syllable Count"]) || "Unknown",
         imageUrl: formatValue(row.ImageUrl),
         active: isTruthy(row.Active),
@@ -426,17 +426,23 @@ async function initialize() {
 
         state.words = tableToObjects(wordTable)
             .map(normalizeWordRecord)
-            .filter((row) => row.word && row.sound && row.category);
+            .filter((row) => row.word && row.sound && row.category)
         state.activities = tableToObjects(activityTable)
             .map(normalizeActivityRecord)
             .filter((row) => row.template);
 
         const activeWords = state.words.filter((row) => row.active);
 
+        const blendValues = uniqueValues(activeWords, "blend").sort((a, b) => {
+            if (a === "No blend") return 1;
+            if (b === "No blend") return -1;
+            return a.localeCompare(b);
+        });
+
         setDropdownOptions(soundDropdown, uniqueValues(activeWords, "sound"), "a sound");
         setDropdownOptions(categoryDropdown, uniqueValues(activeWords, "category"), "a category");
         setCheckboxGroupOptions(positionOptions, uniqueValues(activeWords, "position"), "position");
-        setCheckboxGroupOptions(blendOptions, uniqueValues(activeWords, "blend"), "blend");
+        setCheckboxGroupOptions(blendOptions, blendValues, "blend");
         setCheckboxGroupOptions(syllableCountOptions, uniqueValues(activeWords, "syllableCount"), "syllableCount");
         updateAllFilterActionLabels();
         setStatus("Choose your filters");
