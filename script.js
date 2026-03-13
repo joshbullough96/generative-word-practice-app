@@ -22,6 +22,7 @@ const categoryDropdown = document.getElementById("categoryDropdown");
 const positionOptions = document.getElementById("positionOptions");
 const blendOptions = document.getElementById("blendOptions");
 const syllableCountOptions = document.getElementById("syllableCountOptions");
+const resetFiltersButton = document.getElementById("resetFiltersButton");
 const wordForm = document.getElementById("wordForm");
 const statusMessage = document.getElementById("statusMessage");
 const emptyState = document.getElementById("emptyState");
@@ -195,10 +196,48 @@ function allOptionsSelected(container) {
     return inputs.length > 0 && inputs.every((input) => input.checked);
 }
 
+function noOptionsSelected(container) {
+    const inputs = [...container.querySelectorAll('input[type="checkbox"]')];
+    return inputs.length > 0 && inputs.every((input) => !input.checked);
+}
+
 function selectAllOptions(container) {
     container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
         input.checked = true;
     });
+}
+
+function clearAllOptions(container) {
+    container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = false;
+    });
+}
+
+function updateFilterActionLabel(button, container) {
+    button.textContent = allOptionsSelected(container) ? "None" : "All";
+}
+
+function updateAllFilterActionLabels() {
+    wordForm.querySelectorAll(".filter-action").forEach((button) => {
+        const group = button.dataset.filterGroup;
+        const containerMap = {
+            position: positionOptions,
+            blend: blendOptions,
+            syllableCount: syllableCountOptions,
+        };
+
+        updateFilterActionLabel(button, containerMap[group]);
+    });
+}
+
+function resetFilters() {
+    soundDropdown.value = "Any";
+    categoryDropdown.value = "Any";
+    selectAllOptions(positionOptions);
+    selectAllOptions(blendOptions);
+    selectAllOptions(syllableCountOptions);
+    updateAllFilterActionLabels();
+    updateResults();
 }
 
 function renderWords(words, sound, category, position) {
@@ -373,6 +412,7 @@ async function initialize() {
         setCheckboxGroupOptions(positionOptions, uniqueValues(activeWords, "position"), "position");
         setCheckboxGroupOptions(blendOptions, uniqueValues(activeWords, "blend"), "blend");
         setCheckboxGroupOptions(syllableCountOptions, uniqueValues(activeWords, "syllableCount"), "syllableCount");
+        updateAllFilterActionLabels();
         setStatus("Choose your filters");
         clearActivities();
     } catch (error) {
@@ -383,6 +423,7 @@ async function initialize() {
         setCheckboxGroupOptions(positionOptions, [], "position");
         setCheckboxGroupOptions(blendOptions, [], "blend");
         setCheckboxGroupOptions(syllableCountOptions, [], "syllableCount");
+        updateAllFilterActionLabels();
         clearActivities("Unable to load practice ideas.");
     }
 }
@@ -405,9 +446,21 @@ wordForm.querySelectorAll(".filter-action").forEach((button) => {
             syllableCount: syllableCountOptions,
         };
 
-        selectAllOptions(containerMap[group]);
+        const container = containerMap[group];
+        if (allOptionsSelected(container)) {
+            clearAllOptions(container);
+        } else {
+            selectAllOptions(container);
+        }
+
+        updateFilterActionLabel(button, container);
         updateResults();
     });
 });
+
+positionOptions.addEventListener("change", updateAllFilterActionLabels);
+blendOptions.addEventListener("change", updateAllFilterActionLabels);
+syllableCountOptions.addEventListener("change", updateAllFilterActionLabels);
+resetFiltersButton.addEventListener("click", resetFilters);
 
 initialize();

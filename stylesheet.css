@@ -73,6 +73,14 @@ h1 {
     box-shadow: var(--shadow);
 }
 
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .controls {
     display: grid;
     gap: 14px;
@@ -148,6 +156,24 @@ select {
     transform: none;
     box-shadow: none;
     background: #dce9ff;
+}
+
+.secondary-button {
+    width: auto;
+    min-height: 0;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: #eef4fb;
+    color: var(--ink);
+    box-shadow: none;
+    font-size: 0.95rem;
+}
+
+.secondary-button:hover,
+.secondary-button:focus-visible {
+    transform: none;
+    box-shadow: none;
+    background: #e2ebf7;
 }
 
 .option-grid {
